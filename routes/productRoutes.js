@@ -2,7 +2,7 @@ import express from "express";
 import {
   getAllProcessedImages,
   getProcessedImage,
-  removeBackgroundFromImage,
+  processImages,
 } from "../controllers/imageController.js";
 import { createProduct } from "../controllers/productController.js";
 import { upload } from "../utils/fileUpload.js";
@@ -15,7 +15,8 @@ router.post("/processImages", (req, res, next) => {
     if (err) {
       return next(err);
     }
-    await removeBackgroundFromImage(req, res, next);
+    await processImages(req, res, next);
+    // await processSheets(req, res, next);
   });
 });
 

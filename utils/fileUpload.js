@@ -1,7 +1,6 @@
 import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
-import config from "../config/api.js";
 import { makeDirIfNotExists } from "./helpers.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -20,7 +19,7 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  if (config.upload.allowedTypes.includes(file.mimetype)) {
+  if (["image/jpeg", "image/png", "image/webp"].includes(file.mimetype)) {
     cb(null, true);
   } else {
     cb(new Error("Invalid file type"), false);
@@ -31,9 +30,9 @@ const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: config.upload.maxFileSize,
-    files: config.upload.maxFiles,
+    fileSize: 3 * 1024 * 1024,
+    files: 5,
   },
-}).array("images", config.upload.maxFiles);
+}).array("images", 5);
 
 export { upload };

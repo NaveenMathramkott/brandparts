@@ -3,8 +3,13 @@ import FormData from "form-data";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import config from "../config/api.js";
 import { makeDirIfNotExists } from "../utils/helpers.js";
+
+const defaultParams = {
+  max_resolution: "12000000",
+  quality: "medium",
+  return_format: "webp",
+};
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,18 +20,22 @@ const removeBackground = async (imagePath) => {
     const form = new FormData();
     form.append("file", fs.createReadStream(imagePath));
 
-    Object.keys(config.backgroundCutApi.defaultParams).forEach((key) => {
-      form.append(key, config.backgroundCutApi.defaultParams[key]);
+    Object.keys(defaultParams).forEach((key) => {
+      form.append(key, defaultParams[key]);
     });
 
     const authHeader = {
       Authorization: `Token ${process.env.BACKGROUND_CUT_API_KEY}`,
     };
 
-    const response = await axios.post(config.backgroundCutApi.endpoint, form, {
-      headers: { ...form.getHeaders(), ...authHeader },
-      timeout: config.backgroundCutApi.timeout,
-    });
+    const response = await axios.post(
+      process.env.BACKGROUND_CUT_API_ENDPOINT,
+      form,
+      {
+        headers: { ...form.getHeaders(), ...authHeader },
+        timeout: 20000,
+      }
+    );
 
     if (response.status >= 200 && response.status < 300) {
       const outputImageUrl = response.data.output_image_url;
@@ -34,7 +43,7 @@ const removeBackground = async (imagePath) => {
         outputImageUrl,
         imagePath
       );
-      return outputPath;
+      return path.normalize(outputPath);
     } else {
       throw new Error(`API Error: Status Code ${response.status}`);
     }
@@ -50,15 +59,30 @@ const downloadProcessedImage = async (imageUrl, originalPath) => {
 
   const filename = path.basename(originalPath);
   const timestamp = Date.now();
+  const outputFilename = `${timestamp}-${
+    path.parse(filename).name
+  }_bg_removed.png`;
+
+  // Use path.join() for filesystem operations
+  // const outputPath = path.join(PROCESSED_IMAGES_DIR, outputFilename);
   const outputPath = path.join(
     PROCESSED_IMAGES_DIR,
-    `${timestamp}-${filename}_bg_removed.webp`
+    `${timestamp}-${filename}_bg_removed.png`
   );
 
   const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
+
+  // const compressedImage = await sharp(response.data)
+  //   .png({
+  //     quality: 1, // Adjust quality (0-100)
+  //     compressionLevel: 9, // Maximum compression
+  //     adaptiveFiltering: true, // Use adaptive filtering
+  //   })
+  //   .toBuffer();
   await fs.promises.writeFile(outputPath, response.data);
 
-  return outputPath;
+  return path.normalize(outputPath);
+  // return `http://localhost:5000/processedImages/${outputFilename}`;
 };
 
 export { removeBackground };

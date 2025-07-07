@@ -21,21 +21,20 @@ const appendData = async (sheetName, data) => {
     const authClient = await auth.getClient();
     const sheets = google.sheets({ version: "v4", auth: authClient });
 
-    // Format timestamp in a readable format
-    const formattedData = data.map((row) => [
-      new Date(row[0]).toLocaleString(), // Format timestamp
-      row[1], // Original filename
-      row[2], // Processed image path
-      row[3], // File size
-    ]);
+    const rowData = [
+      new Date().toLocaleString(), // Formatted timestamp
+      data[1], // Original filename (file.originalname)
+      data[2], // Processed image path (processedPath)
+      data[3], // File size (file.size)
+    ];
 
     const response = await sheets.spreadsheets.values.append({
       spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
-      range: `Sheet1!A1`,
-      valueInputOption: "RAW",
+      range: `${sheetName}!A1`,
+      valueInputOption: "USER_ENTERED",
       insertDataOption: "INSERT_ROWS",
       resource: {
-        values: formattedData,
+        values: [rowData],
       },
     });
 

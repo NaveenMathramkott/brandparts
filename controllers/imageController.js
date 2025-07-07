@@ -9,6 +9,20 @@ import { removeFile } from "../utils/helpers.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const processSheets = async (req, res, next) => {
+  try {
+    await appendData("Sheet1", [
+      new Date().toISOString(),
+      "hello anven",
+      "/processedImages/hello.png",
+      1000,
+    ]);
+  } catch (error) {
+    console.log("error--", error);
+    next(error);
+  }
+};
+
 const processImages = async (req, res, next) => {
   try {
     if (!req.files || req.files.length === 0) {
@@ -35,7 +49,7 @@ const processImages = async (req, res, next) => {
         await imageDoc.save();
 
         // Add to Google Sheets
-        await appendData("processedImages", [
+        await appendData("Sheet1", [
           new Date().toISOString(),
           file.originalname,
           processedPath,
@@ -71,33 +85,29 @@ const processImages = async (req, res, next) => {
   }
 };
 
-const removeBackgroundFromImage = async (req, res) => {
-  console.log("calsss--", req.files[0]);
-  const processingPromises = req.files.map(async (file) => {
-    try {
-      const processedPath = await removeBackground(file.path);
-      console.log("resolved--", processedPath);
-      res.json({
-        success: true,
-        message: `${req.files.length} images processed successfully`,
-        data: processedPath,
-      });
+// const removeBackgroundFromImage = async (req, res) => {
+//   const processingPromises = req.files.map(async (file) => {
+//     try {
+//       const processedPath = await removeBackground(file.path);
+//       res.json({
+//         success: true,
+//         message: `${req.files.length} images processed successfully`,
+//         data: processedPath,
+//       });
 
-      // Clean up original file
-    } catch (error) {
-      console.error(`Error processing ${file.originalname}:`, error.message);
-      // Clean up in case of error
-      throw error;
-    }
-  });
-};
+//       // Clean up original file
+//     } catch (error) {
+//       console.error(`Error processing ${file.originalname}:`, error.message);
+//       // Clean up in case of error
+//       throw error;
+//     }
+//   });
+// };
 
 const getProcessedImage = async (req, res) => {
   try {
     const { filename } = req.params;
     const imagePath = path.join(__dirname, "../processedImages", filename);
-    console.log("filename---", filename);
-    console.log("image path---", imagePath);
 
     // Check if file exists
     try {
@@ -161,5 +171,5 @@ export {
   getAllProcessedImages,
   getProcessedImage,
   processImages,
-  removeBackgroundFromImage,
+  processSheets,
 };
