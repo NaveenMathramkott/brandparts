@@ -22,10 +22,8 @@ app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 app.use(express.json());
 app.use(morgan("combined"));
 
-app.use(
-  "/processedImages",
-  express.static(path.join(process.cwd(), "processedImages"))
-);
+const PROCESSED_IMAGES_DIR = path.join(process.cwd(), "processedImages");
+app.use("/processedImages", express.static(PROCESSED_IMAGES_DIR));
 
 app.use("/api/product", productRoutes);
 app.use("/api/auth", authRoute);

@@ -15,6 +15,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PROCESSED_IMAGES_DIR = path.join(process.cwd(), "processedImages");
 
+if (!fs.existsSync(PROCESSED_IMAGES_DIR)) {
+  fs.mkdirSync(PROCESSED_IMAGES_DIR, { recursive: true });
+}
+
 const removeBackground = async (imagePath) => {
   try {
     const form = new FormData();
