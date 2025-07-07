@@ -8,7 +8,7 @@ const __dirname = path.dirname(__filename);
 
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
-    const uploadDir = path.join(__dirname, "../uploads/temp");
+    const uploadDir = path.join(__dirname, "./processedImages");
     await makeDirIfNotExists(uploadDir);
     cb(null, uploadDir);
   },
