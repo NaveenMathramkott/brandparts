@@ -81,8 +81,8 @@ const downloadProcessedImage = async (imageUrl, originalPath) => {
   //   .toBuffer();
   await fs.promises.writeFile(outputPath, response.data);
 
-  return path.normalize(outputPath);
-  // return `http://localhost:5000/processedImages/${outputFilename}`;
+  // return path.normalize(outputPath);
+  return `${process.env.BASE_URL}/processedImages/${outputFilename}`;
 };
 
 export { removeBackground };

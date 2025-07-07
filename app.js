@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
+import path from "path";
 import connectDB from "./config/db.js";
 import errorHandler from "./middleware/errorHandler.js";
 import authRoute from "./routes/authRoutes.js";
@@ -20,6 +21,11 @@ app.use(helmet());
 app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 app.use(express.json());
 app.use(morgan("combined"));
+
+app.use(
+  "/processedImages",
+  express.static(path.join(process.cwd(), "processedImages"))
+);
 
 app.use("/api/product", productRoutes);
 app.use("/api/auth", authRoute);
