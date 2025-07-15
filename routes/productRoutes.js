@@ -1,26 +1,20 @@
 import express from "express";
-import {
-  getAllProcessedImages,
-  getProcessedImage,
-  processImages,
-} from "../controllers/imageController.js";
-import { createProduct } from "../controllers/productController.js";
-import { upload } from "../utils/fileUpload.js";
+import { uploadImagesToDatabase } from "../controllers/imageController.js";
 
 const router = express.Router();
-router.post("/", createProduct);
-
-router.post("/processImages", (req, res, next) => {
-  upload(req, res, async (err) => {
-    if (err) {
-      return next(err);
-    }
-    await processImages(req, res, next);
-    // await processSheets(req, res, next);
-  });
-});
-
-router.get("/processedImages", getAllProcessedImages);
-router.get("/processedImages/:filename", getProcessedImage);
+router.post("/uploadImages", uploadImagesToDatabase);
 
 export default router;
+
+// Using azure blob intead of local file upload
+// const upload = multer({ dest: "uploads/" });
+// router.post("/", createProduct);
+// router.post("/processRemoveBackground", upload.single("image"), async (req, res, next) => {
+//   try {
+//     await processImages(req, res);
+//   } catch (err) {
+//     next(err);
+//   }
+// });
+// router.get("/processedImages", getAllProcessedImages);
+// router.get("/processedImages/:filename", getProcessedImage);
