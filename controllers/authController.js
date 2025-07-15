@@ -1,6 +1,6 @@
+import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import UserModel from "../models/User.js";
-import bcrypt from "bcrypt";
 import { comparePassword } from "../utils/authUtils.js";
 
 // register new user
@@ -51,7 +51,6 @@ const register = async (req, res) => {
 // Login for user
 const login = async (req, res) => {
   const { email, password } = req.body;
-
   try {
     // CHECK IF THE USER EXISTS
     const user = await UserModel.findOne({ email });

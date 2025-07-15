@@ -1,9 +1,6 @@
 import axios from "axios";
 import FormData from "form-data";
 import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
-import { makeDirIfNotExists } from "../utils/helpers.js";
 
 const defaultParams = {
   max_resolution: "12000000",
@@ -11,13 +8,14 @@ const defaultParams = {
   return_format: "webp",
 };
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const PROCESSED_IMAGES_DIR = path.join(process.cwd(), "processedImages");
-
-if (!fs.existsSync(PROCESSED_IMAGES_DIR)) {
-  fs.mkdirSync(PROCESSED_IMAGES_DIR, { recursive: true });
-}
+// const compressedImage = await sharp(response.data)
+// .resize(800)
+// .png({
+//   quality: 80, // Adjust quality (0-100)
+//   compressionLevel: 9, // Maximum compression
+//   adaptiveFiltering: true, // Use adaptive filtering
+// })
+// .toBuffer();
 
 const removeBackground = async (imagePath) => {
   try {
@@ -29,8 +27,9 @@ const removeBackground = async (imagePath) => {
     });
 
     const authHeader = {
-      Authorization: `Token ${process.env.BACKGROUND_CUT_API_KEY}`,
+      Authorization: `${process.env.BACKGROUND_CUT_API_KEY}`,
     };
+    console.log("formadta--", form);
 
     const response = await axios.post(
       process.env.BACKGROUND_CUT_API_ENDPOINT,
@@ -40,14 +39,13 @@ const removeBackground = async (imagePath) => {
         timeout: 20000,
       }
     );
+    console.log("response--", response);
 
     if (response.status >= 200 && response.status < 300) {
       const outputImageUrl = response.data.output_image_url;
-      const outputPath = await downloadProcessedImage(
-        outputImageUrl,
-        imagePath
-      );
-      return path.normalize(outputPath);
+
+      // return path.normalize(outputPath);
+      return outputImageUrl;
     } else {
       throw new Error(`API Error: Status Code ${response.status}`);
     }
@@ -55,38 +53,6 @@ const removeBackground = async (imagePath) => {
     console.error("Background removal failed:", error.message);
     throw error;
   }
-};
-
-const downloadProcessedImage = async (imageUrl, originalPath) => {
-  // Create the processed_images directory if it doesn't exist
-  await makeDirIfNotExists(PROCESSED_IMAGES_DIR);
-
-  const filename = path.basename(originalPath);
-  const timestamp = Date.now();
-  const outputFilename = `${timestamp}-${
-    path.parse(filename).name
-  }_bg_removed.png`;
-
-  // Use path.join() for filesystem operations
-  // const outputPath = path.join(PROCESSED_IMAGES_DIR, outputFilename);
-  const outputPath = path.join(
-    PROCESSED_IMAGES_DIR,
-    `${timestamp}-${filename}_bg_removed.png`
-  );
-
-  const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
-
-  // const compressedImage = await sharp(response.data)
-  //   .png({
-  //     quality: 1, // Adjust quality (0-100)
-  //     compressionLevel: 9, // Maximum compression
-  //     adaptiveFiltering: true, // Use adaptive filtering
-  //   })
-  //   .toBuffer();
-  await fs.promises.writeFile(outputPath, response.data);
-
-  // return path.normalize(outputPath);
-  return `${process.env.BASE_URL}/processedImages/${outputFilename}`;
 };
 
 export { removeBackground };

@@ -1,175 +1,120 @@
-import fs from "fs/promises";
-import path from "path";
-import { fileURLToPath } from "url";
 import Image from "../models/Image.js";
-import { removeBackground } from "../services/backgroundRemovalService.js";
-import { appendData } from "../services/googleSheetsService.js";
-import { removeFile } from "../utils/helpers.js";
+import { addGoogleSheet } from "../services/googleSheetsService.js";
+import { uploadImageToAzure } from "../utils/fileUpload.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const processSheets = async (req, res, next) => {
+//only for testing
+const createGoogleSheets = async (filename, url) => {
   try {
-    await appendData("Sheet1", [
-      new Date().toISOString(),
-      "hello anven",
-      "/processedImages/hello.png",
-      1000,
-    ]);
+    await addGoogleSheet("Sheet1", [null, filename, url, 1000]);
   } catch (error) {
     console.log("error--", error);
-    next(error);
   }
 };
 
-const processImages = async (req, res, next) => {
+// Store the metadata in MongoDB
+const storeMetadata = async (name, imageUrls) => {
+  const imageDoc = new Image({
+    name: name,
+    description: "hello world",
+    urls: imageUrls,
+  });
+  await imageDoc.save();
+};
+
+const uploadImagesToDatabase = async (req, res) => {
   try {
-    if (!req.files || req.files.length === 0) {
-      throw new Error("No images uploaded");
-    }
-
-    const processedImages = [];
-
-    // Process images in parallel
-    const processingPromises = req.files.map(async (file) => {
+    const response = await uploadImageToAzure(req, res);
+    const { totalImages, results } = response;
+    await storeMetadata(totalImages, results);
+    for (const item of results) {
       try {
-        const processedPath = await removeBackground(file.path);
-
-        const imageDoc = new Image({
-          originalName: file.originalname,
-          originalPath: file.path,
-          processedPath,
-          metadata: {
-            size: file.size,
-            mimetype: file.mimetype,
-          },
-        });
-
-        await imageDoc.save();
-
-        // Add to Google Sheets
-        await appendData("Sheet1", [
-          new Date().toISOString(),
-          file.originalname,
-          processedPath,
-          file.size,
-        ]);
-
-        processedImages.push({
-          originalName: file.originalname,
-          processedPath: path.basename(processedPath),
-        });
-
-        // Clean up original file
-        await removeFile(file.path);
+        await createGoogleSheets(item.fileName, item.uploadedUrl);
       } catch (error) {
-        console.error(`Error processing ${file.originalname}:`, error.message);
-        // Clean up in case of error
-        await removeFile(file.path);
-        throw error;
+        console.error(
+          `Failed to create Google Sheet for ${item.fileName}:`,
+          error
+        );
+        // Continue with other items even if one fails
       }
-    });
-
-    await Promise.all(processingPromises);
-
-    res.json({
-      success: true,
-      message: `${req.files.length} images processed successfully`,
-      data: processedImages,
-    });
+    }
+    res.writeHead(201);
+    res.end(
+      JSON.stringify({
+        message: "Image uploaded and metadata stored successfully",
+      })
+    );
   } catch (error) {
-    console.log("file error--", error);
-
-    next(error);
+    throw error;
   }
 };
 
-// const removeBackgroundFromImage = async (req, res) => {
-//   const processingPromises = req.files.map(async (file) => {
-//     try {
-//       const processedPath = await removeBackground(file.path);
-//       res.json({
-//         success: true,
-//         message: `${req.files.length} images processed successfully`,
-//         data: processedPath,
-//       });
+export { uploadImagesToDatabase };
 
-//       // Clean up original file
-//     } catch (error) {
-//       console.error(`Error processing ${file.originalname}:`, error.message);
-//       // Clean up in case of error
-//       throw error;
+// const processImages = async (req, res) => {
+//   console.log("requested image paths", req.file);
+
+//   try {
+//     let filesToProcess = [];
+
+//     if (req.file) {
+//       // Single file upload
+//       filesToProcess.push(req.file);
+//     } else if (req.files && req.files.length > 0) {
+//       // Multiple files upload
+//       filesToProcess = req.files;
+//     } else {
+//       throw new Error("No images uploaded");
 //     }
-//   });
+
+//     const processedImages = [];
+
+//     // Process images in parallel
+//     const processingPromises = filesToProcess.map(async (file) => {
+//       try {
+//         const processedPath = await removeBackground(file.path);
+//         console.log("file path", processedPath);
+
+//         // const imageDoc = new Image({
+//         //   originalName: file.originalname,
+//         //   originalPath: file.path,
+//         //   processedPath,
+//         //   metadata: {
+//         //     size: file.size,
+//         //     mimetype: file.mimetype,
+//         //   },
+//         // });
+
+//         // await imageDoc.save();
+
+//         // Add to Google Sheets
+//         // await addGoogleSheet("Sheet1", [
+//         //   new Date().toISOString(),
+//         //   file.originalname,
+//         //   processedPath,
+//         //   file.size,
+//         // ]);
+
+//         processedImages.push({
+//           originalName: file.originalname,
+//           processedPath: path.basename(processedPath),
+//         });
+
+//         // Clean up original file
+//       } catch (error) {
+//         console.error(`Error processing ${file.originalname}:`, error.message);
+//         // Clean up in case of error
+//         throw error;
+//       }
+//     });
+
+//     await Promise.all(processingPromises);
+
+//     res.json({
+//       success: true,
+//       message: `${req.files.length} images processed successfully`,
+//       data: processedImages,
+//     });
+//   } catch (error) {
+//     console.log("file error--", error);
+//   }
 // };
-
-const getProcessedImage = async (req, res) => {
-  try {
-    const { filename } = req.params;
-    const imagePath = path.join(__dirname, "../processedImages", filename);
-
-    // Check if file exists
-    try {
-      await fs.access(imagePath);
-    } catch (error) {
-      console.log("error--", error);
-
-      return res.status(404).json({
-        success: false,
-        message: "Image not found",
-      });
-    }
-
-    // Send the image file
-    res.sendFile(imagePath);
-  } catch (error) {
-    // console.error("Error fetching image:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
-  }
-};
-
-// Get all images
-const getAllProcessedImages = async (req, res) => {
-  try {
-    const dirPath = path.join(__dirname, "../processedImages");
-    const files = await fs.readdir(dirPath);
-
-    // Filter only image files (optional)
-    const imageFiles = files.filter((file) => {
-      return {
-        filename: file,
-        url: `/processed-images/${file}`, // URL to fetch individual image
-      };
-    });
-
-    res.json({
-      success: true,
-      count: imageFiles.length,
-      images: imageFiles,
-    });
-  } catch (error) {
-    if (error.code === "ENOENT") {
-      return res.json({
-        success: true,
-        count: 0,
-        images: [],
-      });
-    }
-    console.log("error--", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to retrieve images",
-    });
-  }
-};
-
-export {
-  getAllProcessedImages,
-  getProcessedImage,
-  processImages,
-  processSheets,
-};
